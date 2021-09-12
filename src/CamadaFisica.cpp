@@ -49,6 +49,7 @@ void CamadaFisicaTransmissora(std::vector<std::vector<int>> quadro){
 		case BIPOLAR: // codificação bipolar
 			BrutoDeBits = CamadaFisicaTransmissoraCodificacaoBipolar(quadro);
 			break;
+
 	} // fim do switch/case
 
 	MeioDeComunicacao(fluxoBrutoDeBits);
@@ -96,7 +97,9 @@ std::vector<std::vector<int>> CamadaFisicaTransmissoraCodificacaoBipolar(std::ve
 				bit = -1;
 				anterior = -1;
 
-			} // fim do if		
+			} else if(bit == 1 && anterior == -1)
+				anterior = 1;
+					
 		} // fim do for interno
 	} // fim do for externo
 
