@@ -16,15 +16,11 @@ void AplicacaoTransmissora(void){
 
 
 void CamadaDeAplicacaoTransmissora(std::string mensagem){
-	std::vector<std::vector<int>> quadro;
-	std::vector<int> bits;
+	std::vector<int> quadro;
 
 	for(auto caracter:mensagem){
 		for(int j = 0; j < 8; j++)
-			bits.push_back(0 != (caracter & (1 << j)));
-
- 		quadro.push_back(bits);
- 		bits.erase(bits.begin(), bits.end());
+			quadro.insert(quadro.begin(), 0 != (caracter & (1 << j)));
 
 	} // fim do for
 
@@ -33,10 +29,10 @@ void CamadaDeAplicacaoTransmissora(std::string mensagem){
 
 } //fim do método CamadaDeAplicacaoTransmissora
 
-void CamadaFisicaTransmissora(std::vector<std::vector<int>> quadro){
+void CamadaFisicaTransmissora(std::vector<int> quadro){
 
 	int tipoDeCodificacao = BINARIA; //alterar de acordo com o teste
-	std::vector<std::vector<int>> fluxoBrutoDeBits;
+	std::vector<int> fluxoBrutoDeBits;
 
 	switch (tipoDeCodificacao){
 
@@ -44,10 +40,10 @@ void CamadaFisicaTransmissora(std::vector<std::vector<int>> quadro){
 			fluxoBrutoDeBits = CamadaFisicaTransmissoraCodificacaoBinaria(quadro);
 			break;
 		case MANCHESTER: // codificação manchester
-			BrutoDeBits = CamadaFisicaTransmissoraCodificacaoManchester(quadro);
+			fluxoBrutoDeBits = CamadaFisicaTransmissoraCodificacaoManchester(quadro);
 			break;
 		case BIPOLAR: // codificação bipolar
-			BrutoDeBits = CamadaFisicaTransmissoraCodificacaoBipolar(quadro);
+			fluxoBrutoDeBits = CamadaFisicaTransmissoraCodificacaoBipolar(quadro);
 			break;
 
 	} // fim do switch/case
@@ -56,60 +52,56 @@ void CamadaFisicaTransmissora(std::vector<std::vector<int>> quadro){
 
 } // fim do método CamadaFisicaTransmissora
 
-std::vector<std::vector<int>> CamadaFisicaTransmissoraCodificacaoBinaria(std::vector<std::vector<int>>){
+std::vector<int> CamadaFisicaTransmissoraCodificacaoBinaria(std::vector<int> quadro){
 
-	for(bits:quadro){
-		for(bit:bits){
+	for (std::vector<int>::iterator i = quadro.begin(); i != quadro.end(); ++i){
+		if(*i == 0)
+			*i = -1;
 
-			if(bit == 0)
-				bit = -1;
-
-		} // fim do for interno
-	} // fim do for externo
+	} // fim do for
 
 	return quadro;
 
 } // fim do método CamadaFisicaTransmissoraCodificacaoBinaria
 
-std::vector<std::vector<int>> CamadaFisicaTransmissoraCodificacaoManchester(std::vector<std::vector<int>> quadro){
+std::vector<int> CamadaFisicaTransmissoraCodificacaoManchester(std::vector<int> quadro){
 
 	std::vector<int>
-		clock = {0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1};
-
-	std::vector<std::vector<int>>
+		clock = {0,1},
 		retorno;
 
-	for (std::vector<std::vector<int>>::iterator i = quadro.begin(); i != quadro.end(); ++i)
-		retorno.push_back((*i)^clock);
+	for (int i = 0; i < quadro.size(); i++){
+
+		retorno.push_back(quadro[i]^clock[0]);	
+		retorno.push_back(quadro[i]^clock[1]);
+	}
 	
 	return retorno;
 
 } // fim do método CamadaFisicaTransmissoraCodificacaoManchester
 
-std::vector<std::vector<int>> CamadaFisicaTransmissoraCodificacaoBipolar(std::vector<std::vector<int>>){
+std::vector<int> CamadaFisicaTransmissoraCodificacaoBipolar(std::vector<int> quadro){
+	int anterior = -1;
 
+	for (std::vector<int>::iterator i = quadro.begin(); i != quadro.end(); ++i){
+		
+		if(*i == 1 && anterior == 1){
 
-	for(bits:quadro){
-		for(bit:bits){
+			*i = -1;
+			anterior = -1;
 
-			if(bit == 1 && anterior == 1){
-
-				bit = -1;
-				anterior = -1;
-
-			} else if(bit == 1 && anterior == -1)
-				anterior = 1;
+		} else if(*i == 1 && anterior == -1)
+			anterior = 1;
 					
-		} // fim do for interno
-	} // fim do for externo
+	} // fim do for
 
 	return quadro;
 }
 
-void MeioDeComunicacao(std::vector<std::vector<int>>);
-void CamadaFisicaReceptora(std::vector<std::vector<int>>);
-std::vector<std::vector<int>> CamadaFisicaReceptoraCodificacaoBinaria(std::vector<std::vector<int>>);
-std::vector<std::vector<int>> CamadaFisicaReceptoraCodificacaoManchester(std::vector<std::vector<int>>);
-std::vector<std::vector<int>> CamadaFisicaReceptoraCodificacaoBipolar(std::vector<std::vector<int>>);
-void CamadaDeAplicacaoReceptora(std::vector<std::vector<int>>);
+void MeioDeComunicacao(std::vector<int>);
+void CamadaFisicaReceptora(std::vector<int>);
+std::vector<int> CamadaFisicaReceptoraCodificacaoBinaria(std::vector<int>);
+std::vector<int> CamadaFisicaReceptoraCodificacaoManchester(std::vector<int>);
+std::vector<int> CamadaFisicaReceptoraCodificacaoBipolar(std::vector<int>);
+void CamadaDeAplicacaoReceptora(std::vector<int>);
 void AplicacaoReceptora(std::string);
