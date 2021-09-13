@@ -3,6 +3,8 @@
 #define MANCHESTER 1
 #define BIPOLAR 2
 
+int tipoDeCodificacao = MANCHESTER; //alterar de acordo com o teste
+
 void AplicacaoTransmissora(void){
 	std::string mensagem;
 
@@ -30,8 +32,6 @@ void CamadaDeAplicacaoTransmissora(std::string mensagem){
 } //fim do método CamadaDeAplicacaoTransmissora
 
 void CamadaFisicaTransmissora(std::vector<int> quadro){
-
-	int tipoDeCodificacao = BINARIA; //alterar de acordo com o teste
 	std::vector<int> fluxoBrutoDeBits;
 
 	switch (tipoDeCodificacao){
@@ -98,10 +98,90 @@ std::vector<int> CamadaFisicaTransmissoraCodificacaoBipolar(std::vector<int> qua
 	return quadro;
 }
 
-void MeioDeComunicacao(std::vector<int>);
-void CamadaFisicaReceptora(std::vector<int>);
-std::vector<int> CamadaFisicaReceptoraCodificacaoBinaria(std::vector<int>);
-std::vector<int> CamadaFisicaReceptoraCodificacaoManchester(std::vector<int>);
-std::vector<int> CamadaFisicaReceptoraCodificacaoBipolar(std::vector<int>);
-void CamadaDeAplicacaoReceptora(std::vector<int>);
-void AplicacaoReceptora(std::string);
+void MeioDeComunicacao(std::vector<int> bitsEnviados) {
+	std::vector<int> bitsRecebidos(bitsEnviados.size());
+
+	for(int i = 0; i < bitsEnviados.size(); i++) {
+		bitsRecebidos[i] = bitsEnviados[i];
+	}
+
+	CamadaFisicaReceptora(bitsRecebidos);
+}
+
+void CamadaFisicaReceptora(std::vector<int> bits) {
+	std::vector<int> quadro(bits.size());
+
+	switch(tipoDeCodificacao) {
+		case BINARIA:
+			quadro = CamadaFisicaReceptoraDecodificacaoBinaria(bits);
+			break;
+		case MANCHESTER:
+			quadro = CamadaFisicaReceptoraDecodificacaoManchester(bits);
+			break;
+		case BIPOLAR:
+			quadro = CamadaFisicaReceptoraDecodificacaoBipolar(bits);
+			break;
+	}
+
+	CamadaDeAplicacaoReceptora(quadro);
+}
+
+std::vector<int> CamadaFisicaReceptoraDecodificacaoBinaria(std::vector<int> bits) {
+	std::vector<int> quadro(bits.size());
+
+	for(int i = 0; i < bits.size(); i++) {
+		quadro[i] = bits[i];
+		if(quadro[i] == -1)
+			quadro[i] = 0;
+	}
+
+	return quadro;
+}
+
+std::vector<int> CamadaFisicaReceptoraDecodificacaoManchester(std::vector<int> bits) {
+	std::vector<int> quadro(bits.size() / 2);
+
+	int clock[] = {0,1};
+
+	for(int i = 0; i < bits.size() / 2; i++) {
+		quadro[i] = bits[i*2]^clock[0];
+	}
+
+	return quadro;
+}
+
+std::vector<int> CamadaFisicaReceptoraDecodificacaoBipolar(std::vector<int> bits) {
+	std::vector<int> quadro(bits.size());
+
+	for(int i = 0; i < bits.size(); i++) {
+		if(bits[i] < 0)
+			quadro[i] = -bits[i];
+		else
+			quadro[i] = bits[i];
+	}
+
+	return quadro;
+}
+
+void CamadaDeAplicacaoReceptora(std::vector<int> quadro) {
+	std::string mensagem;
+
+	int aux = 0;
+	for(int i = 0; i < quadro.size(); i++) {
+		if(i%8 == 0) {
+			printf("%c (%d)\n", (char)aux, aux);
+			mensagem = (char)aux + mensagem;
+			aux = 0;
+		}
+
+		aux = (aux << 1) | quadro[i];
+	}
+	
+	mensagem = (char)aux + mensagem;
+
+	AplicacaoReceptora(mensagem);
+}
+
+void AplicacaoReceptora(std::string mensagem) {
+	std::cout << "A mensagem recebida foi\n" << mensagem << "\n";
+}

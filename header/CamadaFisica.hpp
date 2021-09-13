@@ -12,9 +12,9 @@ std::vector<int> CamadaFisicaTransmissoraCodificacaoManchester(std::vector<int>)
 std::vector<int> CamadaFisicaTransmissoraCodificacaoBipolar(std::vector<int>);
 void MeioDeComunicacao(std::vector<int>);
 void CamadaFisicaReceptora(std::vector<int>);
-std::vector<int> CamadaFisicaReceptoraCodificacaoBinaria(std::vector<int>);
-std::vector<int> CamadaFisicaReceptoraCodificacaoManchester(std::vector<int>);
-std::vector<int> CamadaFisicaReceptoraCodificacaoBipolar(std::vector<int>);
+std::vector<int> CamadaFisicaReceptoraDecodificacaoBinaria(std::vector<int>);
+std::vector<int> CamadaFisicaReceptoraDecodificacaoManchester(std::vector<int>);
+std::vector<int> CamadaFisicaReceptoraDecodificacaoBipolar(std::vector<int>);
 void CamadaDeAplicacaoReceptora(std::vector<int>);
 void AplicacaoReceptora(std::string);
 
