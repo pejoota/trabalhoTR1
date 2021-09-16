@@ -3,8 +3,9 @@
 
 #include <iostream>
 #include <vector>
+#include <ncurses.h>
 
-void AplicacaoTransmissora(void);
+void AplicacaoTransmissora();
 void CamadaDeAplicacaoTransmissora(std::string);
 void CamadaFisicaTransmissora(std::vector<int>);
 std::vector<int> CamadaFisicaTransmissoraCodificacaoBinaria(std::vector<int>);
@@ -17,5 +18,11 @@ std::vector<int> CamadaFisicaReceptoraDecodificacaoManchester(std::vector<int>);
 std::vector<int> CamadaFisicaReceptoraDecodificacaoBipolar(std::vector<int>);
 void CamadaDeAplicacaoReceptora(std::vector<int>);
 void AplicacaoReceptora(std::string);
+
+void interface(std::vector<int>, int);
+std::string geraClock();
+void geraOnda(std::vector<int>);
+
+std::string getstring();
 
 #endif

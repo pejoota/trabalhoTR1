@@ -1,8 +1,13 @@
 #include <iostream>
 #include <vector>
-#include "../header/CamadaFisica.hpp"
+#include <locale.h>
+#include "CamadaFisica.cpp"
 
 int main(void){
+
+	setlocale(LC_ALL, "");
+	initscr();
+	cbreak();
 
 	AplicacaoTransmissora();
  	return 0;
