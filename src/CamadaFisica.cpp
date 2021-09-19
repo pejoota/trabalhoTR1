@@ -13,11 +13,6 @@
 
 #endif
 
-
-#define BINARIA 0
-#define MANCHESTER 1
-#define BIPOLAR 2
-
 #define CODIFICACAO 0
 #define DECODIFICACAO 1
 
@@ -301,7 +296,9 @@ void interface(std::vector<int> bitsEnviados, std::vector<int> bitsRecebidos){
 		mvprintw(y + 2, text_offset, "Pressione 'q' para continuar...");
 
 		timeout(0);
+		noecho();
 		input = getch();
+		echo();
 		notimeout(stdscr, true);
 
 		if(input == 'q')

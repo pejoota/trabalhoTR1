@@ -6,6 +6,12 @@
 #include <signal.h>
 #include <ncurses.h>
 
+#define BINARIA 0
+#define MANCHESTER 1
+#define BIPOLAR 2
+
+extern int tipoDeCodificacao;
+
 void AplicacaoTransmissora();
 void CamadaDeAplicacaoTransmissora(std::string);
 void CamadaFisicaTransmissora(std::vector<int>);
