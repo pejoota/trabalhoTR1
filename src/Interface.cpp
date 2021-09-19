@@ -95,31 +95,31 @@ void showWave(std::vector<int> bit_levels, int y, int x, int wave_start, int wid
 			}
 		};
 
-	int cur_x = 0;
-	int first_bit = wave_start / (level_width + 1);
-	int pos_in_first_bit = wave_start % (level_width + 1);
+	int curX = 0;
+	int firstBit = wave_start / (level_width + 1);
+	int posInFirstBit = wave_start % (level_width + 1);
 
 	// If must repeat and is already past the bits provided
 	// go back.
-	if(repeat && first_bit >= bit_levels.size()) {
-		first_bit %= bit_levels.size();
+	if(repeat && firstBit >= bit_levels.size()) {
+		firstBit %= bit_levels.size();
 	}
 
 
-	for (int i = first_bit; i < bit_levels.size(); ++i) {
+	for (int i = firstBit; i < bit_levels.size(); ++i) {
 		int cur_level = bit_levels[i];
 
 		// Prints the bit level
-		for(int j = pos_in_first_bit; j < level_width; j++, cur_x++) {
-			if(cur_x >= width)
+		for(int j = posInFirstBit; j < level_width; j++, curX++) {
+			if(curX >= width)
 				return;
 
-			showBlockAt(transitions[cur_level + 1][cur_level + 1], y, x + cur_x);
+			showBlockAt(transitions[cur_level + 1][cur_level + 1], y, x + curX);
 		}
 
 		// Resets the position in the first bit after
 		// the first bit is shown
-		pos_in_first_bit = 0;
+		posInFirstBit = 0;
 
 		int next_level = cur_level;
 
@@ -136,10 +136,10 @@ void showWave(std::vector<int> bit_levels, int y, int x, int wave_start, int wid
 			i = -1;
 		}
 		
-		if(cur_x >= width)
+		if(curX >= width)
 			return;
 
-		showBlockAt(transitions[cur_level + 1][next_level + 1], y, x + cur_x);
-		cur_x++;
+		showBlockAt(transitions[cur_level + 1][next_level + 1], y, x + curX);
+		curX++;
 	}
 }
