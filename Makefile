@@ -16,7 +16,7 @@ clean: clean-custom
 	${RM} $(OBJ) $(BIN) obj
 
 $(BIN): $(OBJ)
-	$(CPP) $(OBJ) -o $(BIN) -g 
+	$(CPP) $(OBJ) -o $(BIN) -g -lncurses
 
 obj/%.o: %.cpp
 	$(CPP) -c $< -o $@
