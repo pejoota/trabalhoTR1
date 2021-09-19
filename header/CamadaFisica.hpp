@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <vector>
+#include <signal.h>
 #include <ncurses.h>
 
 void AplicacaoTransmissora();
@@ -19,9 +20,9 @@ std::vector<int> CamadaFisicaReceptoraDecodificacaoBipolar(std::vector<int>);
 void CamadaDeAplicacaoReceptora(std::vector<int>);
 void AplicacaoReceptora(std::string);
 
-void interface(std::vector<int>, int);
-std::string geraClock();
-void geraOnda(std::vector<int>);
+void resizeHandler(int);
+
+void interface(std::vector<int>, std::vector<int>);
 
 std::string getstring();
 

@@ -1,4 +1,18 @@
 #include "../header/CamadaFisica.hpp"
+#include "../header/Interface.hpp"
+
+#ifdef _WIN32
+
+#include <Windows.h>
+#define SLEEP(X) Sleep((X))
+
+#else
+
+#include <unistd.h>
+#define SLEEP(X) usleep((X))
+
+#endif
+
 
 #define BINARIA 0
 #define MANCHESTER 1
@@ -7,9 +21,14 @@
 #define CODIFICACAO 0
 #define DECODIFICACAO 1
 
-int tipoDeCodificacao = BIPOLAR; //alterar de acordo com o teste
+int tipoDeCodificacao = BINARIA; //alterar de acordo com o teste
+
+int width, height;
+
+std::string mensagem;
 
 void AplicacaoTransmissora(void){
+	getmaxyx(stdscr, height, width);
 
 	if(has_colors())
 		start_color();
@@ -19,7 +38,7 @@ void AplicacaoTransmissora(void){
 
 	printw("Digite a mensagem: ");
 
-	std::string mensagem = getstring();
+	mensagem = getstring();
 
 	//chama a próxima camada
 	CamadaDeAplicacaoTransmissora(mensagem);
@@ -35,6 +54,9 @@ void CamadaDeAplicacaoTransmissora(std::string mensagem){
 			quadro.insert(quadro.begin(), 0 != (caracter & (1 << j)));
 
 	} // fim do for
+
+	for(int j = 0; j < 8; j++)
+		quadro.insert(quadro.begin(), 0);
 
  	//chama a próxima camada
  	CamadaFisicaTransmissora(quadro);
@@ -57,11 +79,6 @@ void CamadaFisicaTransmissora(std::vector<int> quadro){
 
 	} // fim do switch/case
 
-	interface(quadro, CODIFICACAO);
-	printw("Pressione enter para continuar...");
-	noecho();
-	getch();
-
 	MeioDeComunicacao(quadro);
 
 } // fim do método CamadaFisicaTransmissora
@@ -81,13 +98,13 @@ std::vector<int> CamadaFisicaTransmissoraCodificacaoBinaria(std::vector<int> qua
 std::vector<int> CamadaFisicaTransmissoraCodificacaoManchester(std::vector<int> quadro){
 
 	std::vector<int>
-		clock = {0,1},
+		clock = {-1,1},
 		retorno;
 
 	for (int i = 0; i < quadro.size(); i++){
 
-		retorno.push_back(quadro[i] ^ clock[0]);	
-		retorno.push_back(quadro[i] ^ clock[1]);
+		retorno.push_back(quadro[i] * clock[0]);	
+		retorno.push_back(quadro[i] * clock[1]);
 	}
 	
 	return retorno;
@@ -120,6 +137,7 @@ void MeioDeComunicacao(std::vector<int> bitsEnviados) {
 		bitsRecebidos[i] = bitsEnviados[i];
 	}
 
+	interface(bitsEnviados, bitsRecebidos);
 	CamadaFisicaReceptora(bitsRecebidos);
 }
 
@@ -138,7 +156,6 @@ void CamadaFisicaReceptora(std::vector<int> bits) {
 			break;
 	}
 
-	interface(quadro, DECODIFICACAO);
 	CamadaDeAplicacaoReceptora(quadro);
 }
 
@@ -157,10 +174,10 @@ std::vector<int> CamadaFisicaReceptoraDecodificacaoBinaria(std::vector<int> bits
 std::vector<int> CamadaFisicaReceptoraDecodificacaoManchester(std::vector<int> bits) {
 	std::vector<int> quadro(bits.size() / 2);
 
-	int clock[] = {0,1};
+	int clock[] = {-1,1};
 
 	for(int i = 0; i < bits.size() / 2; i++) 
-		quadro[i] = bits[i*2] ^ clock[0];
+		quadro[i] = bits[i*2] * clock[0];
 
 	return quadro;
 }
@@ -169,7 +186,6 @@ std::vector<int> CamadaFisicaReceptoraDecodificacaoBipolar(std::vector<int> bits
 	std::vector<int> quadro(bits.size());
 
 	for(int i = 0; i < bits.size(); i++) {
-
 		if(bits[i] < 0)
 			quadro[i] = -bits[i];
 		else
@@ -205,212 +221,108 @@ void AplicacaoReceptora(std::string mensagem) {
 
 	printw("A mensagem recebida foi:\n");
 	printw(mensagem.c_str());
-	attroff(COLOR_PAIR(1));
-	getch();
+	int y, x;
+	getyx(stdscr, y, x);
+
+	mvprintw(y + 1, 0, "Pressione 'q' para sair");
+	while(true) {
+		attroff(COLOR_PAIR(1));
+		if(getch()== 'q')
+			break;
+	}
 	endwin();
 }
 
-void interface(std::vector<int> quadro, int modo){
-
-	std::string tipo = "";			
-
+std::string getEncodingName(int tipoDeCodificacao) {
 	switch (tipoDeCodificacao){
-
 		case BINARIA:
-			tipo = "Binária";
-			break;
-
+			return "Binária";
 		case MANCHESTER:
-			tipo = "Manchester";
-			break;
-
+			return "Manchester";
 		case BIPOLAR:
-			tipo = "Bipolar";
-			break;
+			return "Bipolar";
 	}
 
-	switch(modo){
+	return "Unknown encoding";
+}
 
-		case CODIFICACAO:
-			printw("\n                                                                Codificação ");
-			printw((tipo + "\n\nClock:\n\n" + geraClock() + "\n\nSinal de entrada:\n\n").c_str());
-			break;
-		case DECODIFICACAO:
-			printw("\n                                                                Decodificação ");
-			printw((tipo + "\n\nSinal de saída:\n\n").c_str());
+void resizeHandler(int signal_value) {
+	if(signal_value == SIGWINCH) {
+		endwin();
+		refresh();
 
-			break;
+		initscr();
+		getmaxyx(stdscr, height, width);
+		printf("%d, %d\n", height, width);
 	}
-
-	geraOnda(quadro);	
 }
 
-std::string geraClock(){
+void interface(std::vector<int> bitsEnviados, std::vector<int> bitsRecebidos){
+	std::string tipo = getEncodingName(tipoDeCodificacao);
 
-	std::string	
-		clock  = "           ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐\n";
-	   	clock += "           │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │\n";
-	   	clock += "           │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │\n";
-	   	clock += "        ───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └\n";
+	int y, x;
 
-	return clock;
-}
+	std::vector<int> clock = {-1, 1};
 
-void geraOnda(std::vector<int> quadro){
+	int level_width = 3;
+	int initial_pos = 0;
 
-	int
-		x,
-		y;
+	int level_number = bitsEnviados.size() * (level_width + 1);
 
-	std::string
-		topo    = "        ",
-		intSup1 = "        ", 
-		intSup2 = "        ", 
-		centro  = "        ", 
-		intInf1 = "        ", 
-		intInf2 = "        ",
-		fundo   = "        ";
+	int input;
 
-	getyx(stdscr, y, x);
+	int usleep_amount = 50000;
 
-	int count = 0;
+	int text_offset = 3, wave_offset = 1;
 
-	for (std::vector<int>::iterator i = quadro.begin(); i != quadro.end(); ++i, count++){
+	clear();
 
-		if(count%16 == 0 && count != 0){
-			
-			if(tipoDeCodificacao == BIPOLAR)
-				printw((topo + "\n" + intSup1 + "\n" + intSup2 + "\n" + centro + "\n" + intInf1 + "\n" + intInf2 + "\n" + fundo).c_str());
-			else
-				printw((topo + "\n" + intSup1 + "\n" + intSup2 + "\n" + centro).c_str());
+	for(; true; initial_pos = (initial_pos + 1 ) % level_number) {
+		clear;
 
-			printw("\nPressione enter para ver o restante do sinal...");
-			getch();
-			noecho();
-			move(y, x);
-			clrtobot();
+		mvprintw(0, text_offset, "Codificação %s", tipo.c_str());
+		mvprintw(2, text_offset, "Mensagem de entrada: %s", mensagem.c_str());
+		mvprintw(3, text_offset, "Clock:");
+		
+		getyx(stdscr, y, x);
+		showWave(clock, y + 1, wave_offset, initial_pos, width - 2, level_width, REPEAT_WAVE);
 
-			topo    = "        ";
-			intSup1 = "        "; 
-			intSup2 = "        "; 
-			centro  = "        "; 
-			intInf1 = "        "; 
-			intInf2 = "        ";
-			fundo   = "        ";
-		}
+		getyx(stdscr, y, x);
 
-		if(*i == 1){
+		y += 2;
+		mvprintw(y, text_offset, "Sinal:");
 
-			if(i == quadro.end()-1 || *(i+1) == 1){
+		showWave(bitsEnviados, y + 1, wave_offset, initial_pos, width - 2, level_width, REPEAT_WAVE);
 
-				topo    += "────────";
-	 			intSup1 += "        ";
-	 			intSup2 += "        ";
-	 			centro  += "        ";
-	 			intInf1 += "        ";
-	 			intInf2 += "        ";
-	 			fundo   += "        ";
+		getyx(stdscr, y, x);
+		int i = initial_pos / (level_width + 1);
+		mvprintw(y + 1, wave_offset, "^ %d: %+d", i, bitsEnviados[i]);
+
+		mvprintw(y + 2, text_offset, "Pressione 'q' para continuar...");
+
+		timeout(0);
+		input = getch();
+		notimeout(stdscr, true);
+
+		if(input == 'q')
+			break;
+
+		if(input == '1')
+			usleep_amount = 50000 * 2;
+		else if(input == '2')
+			usleep_amount = 50000;
+		else if(input == '3')
+			usleep_amount = 50000 / 2;
+		else if(input == '4')
+			usleep_amount = 50000 / 4;
 
 
-			} else if (*(i+1) == 0){
-
-	 			topo    += "───────┐";
-	 			intSup1 += "       │";
-	 			intSup2 += "       │";
-	 			centro  += "       └";
-	 			intInf1 += "        ";
-	 			intInf2 += "        ";
-	 			fundo   += "        ";
-
-
-			} else if(*(i+1) == -1){
-
-				topo    += "───────┐";
-	 			intSup1 += "       │";
-	 			intSup2 += "       │";
-	 			centro  += "       │";
-	 			intInf1 += "       │";
-	 			intInf2 += "       │";
-	 			fundo   += "       └";	 			
-			}
-
-		} else if (*i == 0){
-
-			if(*(i+1) == 1){
-
-				topo    += "       ┌";
-	 			intSup1 += "       │";
-	 			intSup2 += "       │";
-	 			centro  += "───────┘";
-	 			intInf1 += "        ";
-	 			intInf2 += "        ";
-	 			fundo   += "        ";
-
-
-			} else if (i == quadro.end()-1 || *(i+1) == 0){
-
-	 			topo    += "        ";
-	 			intSup1 += "        ";
-	 			intSup2 += "        ";
-	 			centro  += "────────";
-	 			intInf1 += "        ";
-	 			intInf2 += "        ";
-	 			fundo   += "        ";
-
-
-			} else if(*(i+1) == -1){
-
-				topo    += "        ";
-	 			intSup1 += "        ";
-	 			intSup2 += "        ";
-	 			centro  += "───────┐";
-	 			intInf1 += "       │";
-	 			intInf2 += "       │";
-	 			fundo   += "       └";	 			
-			}
-
-		} else {
-
-			if(*(i+1) == 1){
-
-				topo    += "       ┌";
-	 			intSup1 += "       │";
-	 			intSup2 += "       │";
-	 			centro  += "       │";
-	 			intInf1 += "       │";
-	 			intInf2 += "       │";
-	 			fundo   += "───────┘";
-
-
-			} else if (*(i+1) == 0){
-
-	 			topo    += "        ";
-	 			intSup1 += "        ";
-	 			intSup2 += "        ";
-	 			centro  += "       ┌";
-	 			intInf1 += "       │";
-	 			intInf2 += "       │";
-	 			fundo   += "───────┘";
-
-
-			} else if(i == quadro.end()-1 || *(i+1) == -1){
-				topo    += "        ";
-	 			intSup1 += "        ";
-	 			intSup2 += "        ";
-	 			centro  += "        ";
-	 			intInf1 += "        ";
-	 			intInf2 += "        ";
-	 			fundo   += "────────";	 			
-			}
-		}
+		SLEEP(usleep_amount);
 	}
-
-	if(tipoDeCodificacao == BIPOLAR)
-		printw((topo + "\n" + intSup1 + "\n" + intSup2 + "\n" + centro + "\n" + intInf1 + "\n" + intInf2 + "\n" + fundo + "\n\n").c_str());
-	else
-		printw((topo + "\n" + intSup1 + "\n" + intSup2 + "\n" + centro + "\n\n").c_str());
 }
-
+/*
+01100001
+*/
 std::string getstring(){
     std::string input;
 
