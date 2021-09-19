@@ -44,14 +44,14 @@ void AplicacaoTransmissora(void){
 void CamadaDeAplicacaoTransmissora(std::string mensagem){
 	std::vector<int> quadro;
 
-	for(auto caracter:mensagem){
-		for(int j = 0; j < 8; j++)
-			quadro.insert(quadro.begin(), 0 != (caracter & (1 << j)));
+	for(int i = 0; i < mensagem.size(); i++) {
+		for(int j = 7; j >= 0; j--)
+			quadro.push_back(0 != (mensagem[i] & (1 << j)));
 
 	} // fim do for
 
-	for(int j = 0; j < 8; j++)
-		quadro.insert(quadro.begin(), 0);
+	for(int j = 7; j >= 0; j--)
+		quadro.push_back( 0);
 
  	//chama a próxima camada
  	CamadaFisicaTransmissora(quadro);
@@ -136,29 +136,18 @@ void MeioDeComunicacao(std::vector<int> bitsEnviados) {
 	CamadaFisicaReceptora(bitsRecebidos);
 }
 
-void CamadaFisicaReceptora(std::vector<int> bits) {
-	std::vector<int> quadro(bits.size());
+void CamadaFisicaReceptora(std::vector<int> signal) {
+	std::vector<int> bits = decodeBits(signal);
 
-	switch(tipoDeCodificacao) {
-		case BINARIA:
-			quadro = CamadaFisicaReceptoraDecodificacaoBinaria(bits);
-			break;
-		case MANCHESTER:
-			quadro = CamadaFisicaReceptoraDecodificacaoManchester(bits);
-			break;
-		case BIPOLAR:
-			quadro = CamadaFisicaReceptoraDecodificacaoBipolar(bits);
-			break;
-	}
-
-	CamadaDeAplicacaoReceptora(quadro);
+	CamadaDeAplicacaoReceptora(bits);
 }
 
-std::vector<int> CamadaFisicaReceptoraDecodificacaoBinaria(std::vector<int> bits) {
-	std::vector<int> quadro(bits.size());
+std::vector<int> CamadaFisicaReceptoraDecodificacaoBinaria(std::vector<int> signal) {
+	std::vector<int> quadro(signal.size());
 
-	for(int i = 0; i < bits.size(); i++) {
-		quadro[i] = bits[i];
+	for(int i = 0; i < signal.size(); i++) {
+		quadro[i] = signal[i];
+
 		if(quadro[i] == -1)
 			quadro[i] = 0;
 	}
@@ -166,25 +155,26 @@ std::vector<int> CamadaFisicaReceptoraDecodificacaoBinaria(std::vector<int> bits
 	return quadro;
 }
 
-std::vector<int> CamadaFisicaReceptoraDecodificacaoManchester(std::vector<int> bits) {
-	std::vector<int> quadro(bits.size() / 2);
+std::vector<int> CamadaFisicaReceptoraDecodificacaoManchester(std::vector<int> signal) {
+	std::vector<int> quadro(signal.size() / 2);
 
 	int clock[] = {0,1};
 
-	for(int i = 0; i < bits.size() / 2; i++) 
-		quadro[i] = ((bits[i*2] + 1) / 2) ^ clock[0];
+	for(int i = 0; i < signal.size() / 2; i++) {
+		quadro[i] = ((signal[i*2] + 1) / 2) ^ clock[0];
+	}
 
 	return quadro;
 }
 
-std::vector<int> CamadaFisicaReceptoraDecodificacaoBipolar(std::vector<int> bits) {
-	std::vector<int> quadro(bits.size());
+std::vector<int> CamadaFisicaReceptoraDecodificacaoBipolar(std::vector<int> signal) {
+	std::vector<int> quadro(signal.size());
 
-	for(int i = 0; i < bits.size(); i++) {
-		if(bits[i] < 0)
-			quadro[i] = -bits[i];
+	for(int i = 0; i < signal.size(); i++) {
+		if(signal[i] < 0)
+			quadro[i] = -signal[i];
 		else
-			quadro[i] = bits[i];
+			quadro[i] = signal[i];
 	}
 
 	return quadro;
@@ -192,22 +182,7 @@ std::vector<int> CamadaFisicaReceptoraDecodificacaoBipolar(std::vector<int> bits
 
 void CamadaDeAplicacaoReceptora(std::vector<int> quadro) {
 
-	std::string mensagem;
-	int aux = 0;
-
-	for(int i = 0; i < quadro.size(); i++) {
-
-		if(i%8 == 0 && i > 0) {
-
-			// printf("%c (%d)\n", (char)aux, aux);
-			mensagem = (char)aux + mensagem;
-			aux = 0;
-		}
-
-		aux = (aux << 1) | quadro[i];
-	}
-	
-	mensagem = (char)aux + mensagem;
+	std::string mensagem = binToMessage(quadro);
 
 	AplicacaoReceptora(mensagem);
 }
@@ -241,8 +216,8 @@ std::string getEncodingName(int tipoDeCodificacao) {
 	return "Unknown encoding";
 }
 
-void resizeHandler(int signal_value) {
-	if(signal_value == SIGWINCH) {
+void resizeHandler(int signalValue) {
+	if(signalValue == SIGWINCH) {
 		endwin();
 		refresh();
 
@@ -256,44 +231,83 @@ void interface(std::vector<int> bitsEnviados, std::vector<int> bitsRecebidos){
 	std::string tipo = getEncodingName(tipoDeCodificacao);
 
 	int y, x;
+	int wavePos = 0;
+	const int
+		levelWidth = 3,
+		textOffset = 3, waveOffset = 1,
+		levelsPerBit = tipoDeCodificacao == MANCHESTER ? 2 : 1,
+		levelsPerByte = tipoDeCodificacao == MANCHESTER ? 16 : 8;
+
+	int signalLength = bitsEnviados.size() * (levelWidth + 1);
 
 	std::vector<int> clock = {-1, 1};
 
-	int level_width = 3;
-	int initial_pos = 0;
-
-	int level_number = bitsEnviados.size() * (level_width + 1);
+	int usleepAmount = 50000;
 
 	int input;
 
-	int usleep_amount = 50000;
+	std::vector<int> receivedSignal;
+	std::vector<int> receivedBits;
+	std::string receivedMessage;
 
-	int text_offset = 3, wave_offset = 1;
+	for(; true; wavePos++) {
+		if(wavePos >= signalLength) {
+			receivedSignal.clear();
+			receivedBits.clear();
+			receivedMessage.clear();
+		}
 
-	clear();
+		// First time a signal level is seen
+		// add it to the vector
+		if(wavePos % (levelWidth + 1) == 0) {
+			receivedSignal.push_back(bitsEnviados[wavePos / (levelWidth + 1)]);
+		}
 
-	for(; true; initial_pos = (initial_pos + 1 ) % level_number) {
-		clear;
+		if(receivedSignal.size() % levelsPerBit == 0){
+			receivedBits = decodeBits(receivedSignal);
+		}
 
-		mvprintw(0, text_offset, "Codificação %s", tipo.c_str());
-		mvprintw(2, text_offset, "Mensagem de entrada: %s", mensagem.c_str());
-		mvprintw(3, text_offset, "Clock:");
+		if(receivedSignal.size() % levelsPerByte == 0) {
+			receivedMessage = binToMessage(receivedBits);
+		}
+
+		wavePos %= signalLength;
+
+		clear();
+
+		mvprintw(0, textOffset, "Mensagem de entrada: %s", mensagem.c_str());
+		mvprintw(1, textOffset, "Codificação %s", tipo.c_str());
+		mvprintw(2, textOffset, "Clock:");
 		
 		getyx(stdscr, y, x);
-		showWave(clock, y + 1, wave_offset, initial_pos, width - 2, level_width, REPEAT_WAVE);
+		showWave(clock, y + 1, waveOffset, wavePos, width - 2, levelWidth, REPEAT_WAVE);
 
 		getyx(stdscr, y, x);
 
-		y += 2;
-		mvprintw(y, text_offset, "Sinal:");
+		mvprintw(y + 1, textOffset, "Sinal:");
 
-		showWave(bitsEnviados, y + 1, wave_offset, initial_pos, width - 2, level_width, REPEAT_WAVE);
+		showWave(bitsEnviados, y + 2, waveOffset, wavePos, width - 2, levelWidth, REPEAT_WAVE);
 
+		int index = wavePos / (levelWidth + 1);
 		getyx(stdscr, y, x);
-		int i = initial_pos / (level_width + 1);
-		mvprintw(y + 1, wave_offset, "^ %d: %+d", i, bitsEnviados[i]);
 
-		mvprintw(y + 2, text_offset, "Pressione 'q' para continuar...");
+		mvprintw(y + 1, waveOffset, "^ %d: %+d", index, bitsEnviados[index]);
+		mvprintw(y + 2, textOffset, "Received: %s", receivedMessage.c_str());
+		mvprintw(y + 3, textOffset, "Bits:     ");
+		
+		bool hasFullBytesOnly = receivedBits.size() % 8 == 0 && receivedBits.size() > 0;
+		if(hasFullBytesOnly) {
+			for(int i = receivedBits.size() - 8 - receivedBits.size() % 8; i < receivedBits.size(); i++) {
+				printw("%d", receivedBits[i]);
+			}
+			printw("(%c)", receivedMessage[receivedMessage.size() - 1]);
+		} else {
+			for(int i = receivedBits.size() - receivedBits.size() % 8; i < receivedBits.size(); i++) {
+				printw("%d", receivedBits[i]);
+			}
+		}
+
+		mvprintw(y + 4, textOffset, "Pressione 'q' para continuar ou 1-5 para mudar a velocidade");
 
 		timeout(0);
 		noecho();
@@ -305,21 +319,59 @@ void interface(std::vector<int> bitsEnviados, std::vector<int> bitsRecebidos){
 			break;
 
 		if(input == '1')
-			usleep_amount = 50000 * 2;
+			usleepAmount = 50000 * 8;
 		else if(input == '2')
-			usleep_amount = 50000;
+			usleepAmount = 50000 * 2;
 		else if(input == '3')
-			usleep_amount = 50000 / 2;
+			usleepAmount = 50000;
 		else if(input == '4')
-			usleep_amount = 50000 / 4;
+			usleepAmount = 50000 / 2;
+		else if(input == '5')
+			usleepAmount = 50000 / 4;
 
 
-		SLEEP(usleep_amount);
+		SLEEP(usleepAmount);
 	}
 }
-/*
-01100001
-*/
+
+std::vector<int> decodeBits(std::vector<int> &signal) {
+	std::vector<int> bits(signal.size());
+
+	switch(tipoDeCodificacao) {
+		case BINARIA:
+			bits = CamadaFisicaReceptoraDecodificacaoBinaria(signal);
+			break;
+		case MANCHESTER:
+			bits = CamadaFisicaReceptoraDecodificacaoManchester(signal);
+			break;
+		case BIPOLAR:
+			bits = CamadaFisicaReceptoraDecodificacaoBipolar(signal);
+			break;
+	}
+
+	return bits;
+}
+
+std::string binToMessage(std::vector<int> &bits) {
+	std::string mensagem;
+	int aux = 0;
+
+	for(int i = 0; i < bits.size(); i++) {
+
+		if(i%8 == 0 && i > 0) {
+			// printf("%c (%d)\n", (char)aux, aux);
+			mensagem.push_back((char)aux);
+			aux = 0;
+		}
+
+		aux = (aux << 1) | bits[i];
+	}
+	
+	mensagem.push_back((char)aux);
+
+	return mensagem;
+}
+
 std::string getstring(){
     std::string input;
 

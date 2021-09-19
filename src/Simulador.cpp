@@ -26,6 +26,7 @@ int main(int argc, char **argv){
 				"\tm manches \tSeleciona codificação manchester\n"
 				"\tp bipolar \tSeleciona codificação bipolar\n"
 			);
+			
 			return 0;
 		}
 	}

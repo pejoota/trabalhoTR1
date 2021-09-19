@@ -30,6 +30,9 @@ void resizeHandler(int);
 
 void interface(std::vector<int>, std::vector<int>);
 
+std::vector<int> decodeBits(std::vector<int> &signal);
+std::string binToMessage(std::vector<int> &bits);
+
 std::string getstring();
 
 #endif
