@@ -1,7 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <locale.h>
-#include "CamadaFisica.cpp"
+#include "../header/CamadaFisica.hpp"
 
 int main(void){
 
