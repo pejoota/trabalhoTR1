@@ -92,14 +92,14 @@ std::vector<int> CamadaFisicaTransmissoraCodificacaoBinaria(std::vector<int> qua
 
 std::vector<int> CamadaFisicaTransmissoraCodificacaoManchester(std::vector<int> quadro){
 
-	std::vector<int>
-		clock = {-1,1},
-		retorno;
+	const std::vector<int>
+		clock = {0,1};
+	std::vector<int> retorno;
 
 	for (int i = 0; i < quadro.size(); i++){
 
-		retorno.push_back(quadro[i] * clock[0]);	
-		retorno.push_back(quadro[i] * clock[1]);
+		retorno.push_back((quadro[i] ^ clock[0]) * 2 - 1);
+		retorno.push_back((quadro[i] ^ clock[1]) * 2 - 1);
 	}
 	
 	return retorno;
@@ -169,10 +169,10 @@ std::vector<int> CamadaFisicaReceptoraDecodificacaoBinaria(std::vector<int> bits
 std::vector<int> CamadaFisicaReceptoraDecodificacaoManchester(std::vector<int> bits) {
 	std::vector<int> quadro(bits.size() / 2);
 
-	int clock[] = {-1,1};
+	int clock[] = {0,1};
 
 	for(int i = 0; i < bits.size() / 2; i++) 
-		quadro[i] = bits[i*2] * clock[0];
+		quadro[i] = ((bits[i*2] + 1) / 2) ^ clock[0];
 
 	return quadro;
 }
@@ -197,7 +197,7 @@ void CamadaDeAplicacaoReceptora(std::vector<int> quadro) {
 
 	for(int i = 0; i < quadro.size(); i++) {
 
-		if(i%8 == 0) {
+		if(i%8 == 0 && i > 0) {
 
 			// printf("%c (%d)\n", (char)aux, aux);
 			mensagem = (char)aux + mensagem;
@@ -220,8 +220,8 @@ void AplicacaoReceptora(std::string mensagem) {
 	getyx(stdscr, y, x);
 
 	mvprintw(y + 1, 0, "Pressione 'q' para sair");
+	attroff(COLOR_PAIR(1));
 	while(true) {
-		attroff(COLOR_PAIR(1));
 		if(getch()== 'q')
 			break;
 	}
