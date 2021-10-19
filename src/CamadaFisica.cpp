@@ -16,9 +16,6 @@
 
 #endif
 
-#define CODIFICACAO 0
-#define DECODIFICACAO 1
-
 int tipoDeCodificacao = BINARIA;  //alterar de acordo com o teste
 
 int width, height;
@@ -121,10 +118,22 @@ std::vector<int> CamadaFisicaTransmissoraCodificacaoBipolar(std::vector<int> qua
 }  // fim do método CamadaFisicaTransmissoraCodificacaoBipolar
 
 void MeioDeComunicacao(std::vector<int> bitsEnviados) {
+
+  std::random_device dev;
+  std::mt19937 rng(dev());
+  std::uniform_int_distribution<std::mt19937::result_type> dist100(0,99);
+
   std::vector<int> bitsRecebidos(bitsEnviados.size());
+  int porcentagemDeErro = 10;
 
   for (int i = 0; i < bitsEnviados.size(); i++) {
-    bitsRecebidos[i] = bitsEnviados[i];
+
+    if (dist100(rng) < porcentagemDeErro)
+      bitsRecebidos[i] = !bitsEnviados[i];
+    
+    else
+      bitsRecebidos[i] = bitsEnviados[i];
+    
   }
 
   interface(bitsEnviados, bitsRecebidos);
@@ -175,13 +184,15 @@ std::vector<int> CamadaFisicaReceptoraDecodificacaoBipolar(std::vector<int> sign
   return quadro;
 }
 
-void CamadaDeAplicacaoReceptora(std::vector<int> quadro) {
+void CamadaDeAplicacaoReceptora(std::vector<int> quadro, std::string msg) {
   std::string mensagem = binToMessage(quadro);
 
-  AplicacaoReceptora(mensagem);
+  AplicacaoReceptora(mensagem, msg);
 }
 
-void AplicacaoReceptora(std::string mensagem) {
+void AplicacaoReceptora(std::string mensagem, std::string msg) {
+  printw(msg.c_str());
+  printw("\n");
   printw("A mensagem recebida foi:\n");
   printw(mensagem.c_str());
   int y, x;

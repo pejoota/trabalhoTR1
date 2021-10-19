@@ -2,6 +2,7 @@
 #define CAMADAFISICA_H_INCLUDED
 
 #include <iostream>
+#include <random>
 #include <vector>
 #include <signal.h>
 #include <ncurses.h>
@@ -23,8 +24,8 @@ void CamadaFisicaReceptora(std::vector<int>);
 std::vector<int> CamadaFisicaReceptoraDecodificacaoBinaria(std::vector<int>);
 std::vector<int> CamadaFisicaReceptoraDecodificacaoManchester(std::vector<int>);
 std::vector<int> CamadaFisicaReceptoraDecodificacaoBipolar(std::vector<int>);
-void CamadaDeAplicacaoReceptora(std::vector<int>);
-void AplicacaoReceptora(std::string);
+void CamadaDeAplicacaoReceptora(std::vector<int>, std::string);
+void AplicacaoReceptora(std::string, std::string);
 
 void resizeHandler(int);
 
