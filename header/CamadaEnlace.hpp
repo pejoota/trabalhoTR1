@@ -1,8 +1,8 @@
 #ifndef CAMADAENLACE_H_INCLUDED
 #define CAMADAENLACE_H_INCLUDED
 
-#include <vector>
 #include <iostream>
+#include <vector>
 
 void CamadaEnlaceTransmissora(std::vector<int>&);
 void CamadaEnlaceTransmissoraEnquadramento(std::vector<int>&);
@@ -21,6 +21,6 @@ std::vector<int> CamadaEnlaceReceptoraEnquadramentoContagem(std::vector<int>&);
 std::vector<int> CamadaEnlaceReceptoraEnquadramentoInsercao(std::vector<int>&);
 
 void insertByteBitsIntoVector(int, std::vector<int>&);
-void somaBits(std::vector<int>&, std::vector<int>)
+void somaBits(std::vector<int>&, std::vector<int>);
 
 #endif  // CAMADAENLACE_H_INCLUDED

@@ -17,7 +17,7 @@
 #define FLAG_BYTE 0xFF
 #define ESC_BYTE 0xFE
 
-std::vector<int> gerador = {1,1,0,1}
+std::vector<int> gerador = {1, 1, 0, 1};
 int tipoDeEnquadramento = CHAR_COUNTING;  // alterar de acordo com o teste
 int tipoDeControleErro = BIT_PARITY;
 
@@ -45,7 +45,7 @@ void insertByteBitsIntoVector(int byte, std::vector<int> &vector) {
     vector.push_back(0 != (byte & (1 << i)));
   }
 }
-  
+
 std::vector<int> CamadaEnlaceTransmissoraEnquadramentoContagem(std::vector<int> &quadro) {
   std::vector<int> quadroEnquadrado;
   insertByteBitsIntoVector(quadro.size() / 8, quadroEnquadrado);
@@ -85,8 +85,7 @@ std::vector<int> CamadaEnlaceTransmissoraEnquadramentoInsercao(std::vector<int> 
 }
 
 void CamadaEnlaceTransmissoraControleDeErro(std::vector<int> &quadro) {
-
-  switch(tipoDeControleErro){
+  switch (tipoDeControleErro) {
     case BIT_PARITY:
       CamadaEnlaceTransmissoraControleDeErroBitParidade(quadro);
       break;
@@ -98,50 +97,44 @@ void CamadaEnlaceTransmissoraControleDeErro(std::vector<int> &quadro) {
 }
 
 void CamadaEnlaceTransmissoraControleDeErroBitParidade(std::vector<int> &quadro) {
-
   int count = 0;
 
-  for (auto bit : quadro){
+  for (auto bit : quadro) {
     if (bit) count++;
   }
 
-  quadro.push_back(count%2);
+  quadro.push_back(count % 2);
 }
 
-void CamadaEnlaceTransmissoraControleDeErroCRC(std::vector<int> &quadro){
-
+void CamadaEnlaceTransmissoraControleDeErroCRC(std::vector<int> &quadro) {
   int tamanhoQuadro = quadro.size();
   int tamanhoGerador = gerador.size();
 
   std::vector<int> atual, resto;
 
-  if(tamanhoGerador > tamanhoQuadro || *gerador.begin() == 0 || *gerador.end() == 0)
-    return
+  if (tamanhoGerador > tamanhoQuadro || *gerador.begin() == 0 || *gerador.end() == 0)
+    return;
 
-  for(int i = 0; i < tamanhoGerador - 1; i++)
+  for (int i = 0; i < tamanhoGerador - 1; i++)
     atual.push_back(quadro[i]);
 
-  for(int i = tamanhoGerador; i < tamanhoQuadro; i++){
-
+  for (int i = tamanhoGerador; i < tamanhoQuadro; i++) {
     atual.push_back(quadro[i]);
 
-    if (atual[0] == 0){
-
-      for(int j = 0; j < tamanhoGerador; j++)
+    if (atual[0] == 0) {
+      for (int j = 0; j < tamanhoGerador; j++)
         resto[j] = 0;
-      
+
     } else
       resto = gerador;
-    
-    for(int j = 0; j < tamanhoGerador; j++)
+
+    for (int j = 0; j < tamanhoGerador; j++)
       atual[j] ^= resto[j];
-    
+
     atual.erase(atual.begin());
   }
 
   somaBits(quadro, resto);
-
-  return quadro;
 }
 
 void CamadaEnlaceReceptora(std::vector<int> &quadro) {
@@ -164,10 +157,9 @@ void CamadaEnlaceReceptoraEnquadramento(std::vector<int> &quadro) {
 }
 
 std::string CamadaEnlaceReceptoraControleDeErro(std::vector<int> &quadro) {
-
   std::string msg;
 
-  switch(tipoDeControleErro){
+  switch (tipoDeControleErro) {
     case BIT_PARITY:
       msg = CamadaEnlaceReceptoraControleDeErroBitParidade(quadro);
       break;
@@ -180,53 +172,51 @@ std::string CamadaEnlaceReceptoraControleDeErro(std::vector<int> &quadro) {
   return msg;
 }
 
-std::string CamadaEnlaceReceptoraControleDeErroBitParidade(std::vector<int> &quadro){
-
+std::string CamadaEnlaceReceptoraControleDeErroBitParidade(std::vector<int> &quadro) {
   int count = 0;
 
-  for (auto bit : quadro){
+  for (auto bit : quadro) {
     if (bit) count++;
   }
 
   quadro.pop_back();
 
-  if (count%2) return MSG_ERRO;
-  else return SEM_ERRO;
+  if (count % 2)
+    return MSG_ERRO;
+  else
+    return SEM_ERRO;
 }
 
-std::string CamadaEnlaceReceptoraControleDeErroCRC(std::vector<int> &quadro){
-
+std::string CamadaEnlaceReceptoraControleDeErroCRC(std::vector<int> &quadro) {
   int tamanhoQuadro = quadro.size();
   int tamanhoGerador = gerador.size();
 
   std::vector<int> atual, resto;
 
-  if(tamanhoGerador > tamanhoQuadro || *gerador.begin() == 0 || *gerador.end() == 0)
+  if (tamanhoGerador > tamanhoQuadro || *gerador.begin() == 0 || *gerador.end() == 0)
     return GERADOR_ERRO;
 
-  for(int i = 0; i < tamanhoGerador - 1; i++)
+  for (int i = 0; i < tamanhoGerador - 1; i++)
     atual.push_back(quadro[i]);
 
-  for(int i = tamanhoGerador; i < tamanhoQuadro; i++){
-
+  for (int i = tamanhoGerador; i < tamanhoQuadro; i++) {
     atual.push_back(quadro[i]);
 
-    if (atual[0] == 0){
-
-      for(int j = 0; j < tamanhoGerador; j++)
+    if (atual[0] == 0) {
+      for (int j = 0; j < tamanhoGerador; j++)
         resto[j] = 0;
-      
+
     } else
       resto = gerador;
-    
-    for(int j = 0; j < tamanhoGerador; j++)
+
+    for (int j = 0; j < tamanhoGerador; j++)
       atual[j] ^= resto[j];
-    
+
     atual.erase(atual.begin());
   }
 
-  for(auto bit : resto){
-    if(bit) return MSG_ERRO;
+  for (auto bit : resto) {
+    if (bit) return MSG_ERRO;
   }
 
   return SEM_ERRO;
@@ -275,15 +265,15 @@ std::vector<int> CamadaEnlaceReceptoraEnquadramentoInsercao(std::vector<int> &qu
   return quadro;
 }
 
-void somaBits(std::vector<int> &quadro, std::vector<int> resto){
-
-  int tamanhoResto = resto.size();
+void somaBits(std::vector<int> &quadro, std::vector<int> resto) {
+  int tamanhoResto = resto.size(),
+      tamanhoQuadro = quadro.size();
   int resultado, carry = 0;
 
-  for (int i = tamanhoResto - 1; i >= 0; i--){
+  for (int i = tamanhoResto - 1; i >= 0; i--) {
     resultado = carry + quadro[tamanhoQuadro - tamanhoResto + i] + resto[i];
 
-    switch (resultado){
+    switch (resultado) {
       case 0:
         carry = 0;
         quadro[tamanhoQuadro - tamanhoResto + i] = 0;
