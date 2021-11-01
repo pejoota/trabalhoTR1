@@ -1,17 +1,19 @@
 #ifndef CAMADAFISICA_H_INCLUDED
 #define CAMADAFISICA_H_INCLUDED
 
+#include <ncurses.h>
+#include <signal.h>
+
 #include <iostream>
 #include <random>
 #include <vector>
-#include <signal.h>
-#include <ncurses.h>
 
 #define BINARIA 0
 #define MANCHESTER 1
 #define BIPOLAR 2
 
 extern int tipoDeCodificacao;
+extern FILE *logFile;
 
 void AplicacaoTransmissora();
 void CamadaDeAplicacaoTransmissora(std::string);

@@ -16,13 +16,26 @@
 
 #endif
 
+#define getCharNonBlocking(X) \
+  timeout(0);                 \
+  noecho();                   \
+  (X) = getch();              \
+  echo();                     \
+  timeout(-1)
+
 int tipoDeCodificacao = BINARIA;  //alterar de acordo com o teste
+
+int errorCount = 0;
 
 int width, height;
 
 std::string mensagem;
 
+FILE* logFile;
+
 void AplicacaoTransmissora(void) {
+  logFile = fopen("logFile.log", "w");
+
   getmaxyx(stdscr, height, width);
 
   if (has_colors())
@@ -58,6 +71,21 @@ void CamadaDeAplicacaoTransmissora(std::string mensagem) {
 }  //fim do método CamadaDeAplicacaoTransmissora
 
 void CamadaFisicaTransmissora(std::vector<int> quadro) {
+  std::random_device dev;
+  std::mt19937 rng(dev());
+  std::uniform_real_distribution<double> dist100(0.0, 100.0);
+
+  double porcentagemDeErro = 2;
+
+  for (int i = 0; i < quadro.size(); i++) {
+    if (dist100(rng) < porcentagemDeErro) {
+      quadro[i] = !quadro[i];
+      errorCount++;
+    } else {
+      quadro[i] = quadro[i];
+    }
+  }
+
   switch (tipoDeCodificacao) {
     case BINARIA:  // codificação binária
       quadro = CamadaFisicaTransmissoraCodificacaoBinaria(quadro);
@@ -118,23 +146,9 @@ std::vector<int> CamadaFisicaTransmissoraCodificacaoBipolar(std::vector<int> qua
 }  // fim do método CamadaFisicaTransmissoraCodificacaoBipolar
 
 void MeioDeComunicacao(std::vector<int> bitsEnviados) {
+  std::vector<int> bitsRecebidos(bitsEnviados);
 
-  std::random_device dev;
-  std::mt19937 rng(dev());
-  std::uniform_int_distribution<std::mt19937::result_type> dist100(0,99);
-
-  std::vector<int> bitsRecebidos(bitsEnviados.size());
-  int porcentagemDeErro = 10;
-
-  for (int i = 0; i < bitsEnviados.size(); i++) {
-
-    if (dist100(rng) < porcentagemDeErro)
-      bitsRecebidos[i] = !bitsEnviados[i];
-    
-    else
-      bitsRecebidos[i] = bitsEnviados[i];
-    
-  }
+  // ERROS FORAM INSERIDOS NA FUNÇÃO CamadaFisicaTransmissora
 
   interface(bitsEnviados, bitsRecebidos);
   CamadaFisicaReceptora(bitsRecebidos);
@@ -150,10 +164,18 @@ std::vector<int> CamadaFisicaReceptoraDecodificacaoBinaria(std::vector<int> sign
   std::vector<int> quadro(signal.size());
 
   for (int i = 0; i < signal.size(); i++) {
-    quadro[i] = signal[i];
-
-    if (quadro[i] == -1)
+    if (signal[i] == 1) {
+      quadro[i] = signal[i];
+    } else if (signal[i] == -1) {
       quadro[i] = 0;
+    } else {
+      mvprintw(2, 0, "Sinal sofreu erros que tornaram a decodificação binaria impossível");
+      int input;
+      getCharNonBlocking(input);
+      endwin();
+      printf("\n\n\nmano n sei oq ta rolando [%d]%d\n\n\n", i, signal[i]);
+      exit(1);
+    }
   }
 
   return quadro;
@@ -162,10 +184,22 @@ std::vector<int> CamadaFisicaReceptoraDecodificacaoBinaria(std::vector<int> sign
 std::vector<int> CamadaFisicaReceptoraDecodificacaoManchester(std::vector<int> signal) {
   std::vector<int> quadro(signal.size() / 2);
 
-  int clock[] = {0, 1};
+  int clock[] = {0, 1},
+      firstClock, secondClock;
 
   for (int i = 0; i < signal.size() / 2; i++) {
-    quadro[i] = ((signal[i * 2] + 1) / 2) ^ clock[0];
+    firstClock = ((signal[i * 2] + 1) / 2) ^ clock[0];
+    secondClock = ((signal[i * 2 + 1] + 1) / 2) ^ clock[1];
+
+    if (firstClock != secondClock) {
+      mvprintw(2, 0, "Sinal sofreu erros que tornaram a decodificação Manchester impossível");
+      int input;
+      getCharNonBlocking(input);
+      endwin();
+      exit(1);
+    }
+
+    quadro[i] = firstClock;
   }
 
   return quadro;
@@ -174,34 +208,45 @@ std::vector<int> CamadaFisicaReceptoraDecodificacaoManchester(std::vector<int> s
 std::vector<int> CamadaFisicaReceptoraDecodificacaoBipolar(std::vector<int> signal) {
   std::vector<int> quadro(signal.size());
 
+  int lastOne = -1;
+
   for (int i = 0; i < signal.size(); i++) {
-    if (signal[i] < 0)
-      quadro[i] = -signal[i];
-    else
-      quadro[i] = signal[i];
+    if (signal[i] == 0) {
+      quadro[i] = 0;
+    } else if (signal[i] == -lastOne) {
+      quadro[i] = 1;
+      lastOne = -lastOne;
+    } else {
+      mvprintw(2, 0, "Sinal sofreu erros que tornaram a decodificação bipolar impossível");
+      int input;
+      getCharNonBlocking(input);
+      endwin();
+      exit(1);
+    }
   }
 
   return quadro;
 }
 
-void CamadaDeAplicacaoReceptora(std::vector<int> quadro, std::string msg) {
+void CamadaDeAplicacaoReceptora(std::vector<int> quadro, std::string errorMessage) {
   std::string mensagem = binToMessage(quadro);
 
-  AplicacaoReceptora(mensagem, msg);
+  AplicacaoReceptora(mensagem, errorMessage);
 }
 
-void AplicacaoReceptora(std::string mensagem, std::string msg) {
-  printw(msg.c_str());
+void AplicacaoReceptora(std::string mensagem, std::string errorMessage) {
+  printw(errorMessage.c_str());
   printw("\n");
   printw("A mensagem recebida foi:\n");
   printw(mensagem.c_str());
-  int y, x;
+  int y, x, input;
   getyx(stdscr, y, x);
 
   mvprintw(y + 1, 0, "Pressione 'q' para sair");
   attroff(COLOR_PAIR(1));
   while (true) {
-    if (getch() == 'q')
+    getCharNonBlocking(input);
+    if (input == 'q')
       break;
   }
   endwin();
@@ -261,6 +306,8 @@ void interface(std::vector<int> bitsEnviados, std::vector<int> bitsRecebidos) {
       receivedMessage.clear();
     }
 
+    wavePos %= signalLength;
+
     // First time a signal level is seen
     // add it to the vector
     if (wavePos % (levelWidth + 1) == 0) {
@@ -275,11 +322,9 @@ void interface(std::vector<int> bitsEnviados, std::vector<int> bitsRecebidos) {
       receivedMessage = binToMessage(receivedBits);
     }
 
-    wavePos %= signalLength;
-
     clear();
 
-    mvprintw(0, textOffset, "Mensagem de entrada: %s", mensagem.c_str());
+    mvprintw(0, textOffset, "Entrada: %s", mensagem.c_str());
     mvprintw(1, textOffset, "Codificação %s", tipo.c_str());
     mvprintw(2, textOffset, "Clock:");
 
@@ -288,7 +333,7 @@ void interface(std::vector<int> bitsEnviados, std::vector<int> bitsRecebidos) {
 
     getyx(stdscr, y, x);
 
-    mvprintw(y + 1, textOffset, "Sinal:");
+    mvprintw(y + 1, textOffset, "Sinal:\t\tErros inseridos:%d", errorCount);
 
     showWave(bitsEnviados, y + 2, waveOffset, wavePos, width - 2, levelWidth, REPEAT_WAVE);
 
@@ -313,11 +358,7 @@ void interface(std::vector<int> bitsEnviados, std::vector<int> bitsRecebidos) {
 
     mvprintw(y + 4, textOffset, "Pressione 'q' para continuar ou 1-5 para mudar a velocidade");
 
-    timeout(0);
-    noecho();
-    input = getch();
-    echo();
-    notimeout(stdscr, true);
+    getCharNonBlocking(input);
 
     if (input == 'q')
       break;
@@ -337,7 +378,7 @@ void interface(std::vector<int> bitsEnviados, std::vector<int> bitsRecebidos) {
   }
 }
 
-std::vector<int> decodeBits(std::vector<int> &signal) {
+std::vector<int> decodeBits(std::vector<int>& signal) {
   std::vector<int> bits(signal.size());
 
   switch (tipoDeCodificacao) {
@@ -355,7 +396,7 @@ std::vector<int> decodeBits(std::vector<int> &signal) {
   return bits;
 }
 
-std::string binToMessage(std::vector<int> &bits) {
+std::string binToMessage(std::vector<int>& bits) {
   std::string mensagem;
   int aux = 0;
 

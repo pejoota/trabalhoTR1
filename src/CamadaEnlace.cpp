@@ -17,9 +17,13 @@
 #define FLAG_BYTE 0xFF
 #define ESC_BYTE 0xFE
 
-std::vector<int> gerador = {1, 1, 0, 1};
+std::vector<int> gerador = {1, 0, 0, 0, 0, 0, 1, 0,
+                            0, 1, 1, 0, 0, 0, 0, 0,
+                            1, 0, 0, 0, 1, 1, 1, 0,
+                            1, 1, 0, 1, 1, 0, 1, 0, 1};
+
 int tipoDeEnquadramento = CHAR_COUNTING;  // alterar de acordo com o teste
-int tipoDeControleErro = BIT_PARITY;
+int tipoDeControleErro = CRC;
 
 void CamadaEnlaceTransmissora(std::vector<int> &quadro) {
   CamadaEnlaceTransmissoraEnquadramento(quadro);
@@ -107,42 +111,31 @@ void CamadaEnlaceTransmissoraControleDeErroBitParidade(std::vector<int> &quadro)
 }
 
 void CamadaEnlaceTransmissoraControleDeErroCRC(std::vector<int> &quadro) {
-  int tamanhoQuadro = quadro.size();
-  int tamanhoGerador = gerador.size();
+  std::vector<int> quadroPadded(quadro);
 
-  std::vector<int> atual, resto;
+  quadroPadded.insert(quadroPadded.end(), gerador.size() - 1, 0);
 
-  if (tamanhoGerador > tamanhoQuadro || *gerador.begin() == 0 || *gerador.end() == 0)
-    return;
+  uint64_t result = calcCRC(quadroPadded, gerador);
 
-  for (int i = 0; i < tamanhoGerador - 1; i++)
-    atual.push_back(quadro[i]);
+  fprintf(logFile, "Transmissora CRC\n");
 
-  for (int i = tamanhoGerador; i < tamanhoQuadro; i++) {
-    atual.push_back(quadro[i]);
+  fprintf(logFile, "tamanho antes: %d\n", quadro.size());
+  fprintf(logFile, "gerador size: %d\n", gerador.size());
+  fprintf(logFile, "mask inicial: %llx\n", ((uint64_t)1) << (gerador.size() - 2));
 
-    if (atual[0] == 0) {
-      for (int j = 0; j < tamanhoGerador; j++)
-        resto[j] = 0;
-
-    } else
-      resto = gerador;
-
-    for (int j = 0; j < tamanhoGerador; j++)
-      atual[j] ^= resto[j];
-
-    atual.erase(atual.begin());
+  for (uint64_t mask = ((uint64_t)1) << (gerador.size() - 2); mask != 0; mask >>= 1) {
+    quadro.push_back((result & mask) != 0);
   }
 
-  somaBits(quadro, resto);
+  fprintf(logFile, "tamanho depois: %d\n", quadro.size());
 }
 
 void CamadaEnlaceReceptora(std::vector<int> &quadro) {
-  std::string msg = CamadaEnlaceReceptoraControleDeErro(quadro);
+  std::string errorMessage = CamadaEnlaceReceptoraControleDeErro(quadro);
 
   CamadaEnlaceReceptoraEnquadramento(quadro);
 
-  CamadaDeAplicacaoReceptora(quadro, msg);
+  CamadaDeAplicacaoReceptora(quadro, errorMessage);
 }
 
 void CamadaEnlaceReceptoraEnquadramento(std::vector<int> &quadro) {
@@ -188,35 +181,12 @@ std::string CamadaEnlaceReceptoraControleDeErroBitParidade(std::vector<int> &qua
 }
 
 std::string CamadaEnlaceReceptoraControleDeErroCRC(std::vector<int> &quadro) {
-  int tamanhoQuadro = quadro.size();
-  int tamanhoGerador = gerador.size();
+  uint64_t result = calcCRC(quadro, gerador);
 
-  std::vector<int> atual, resto;
+  fprintf(logFile, "Receptora CRC\n%llx", result);
 
-  if (tamanhoGerador > tamanhoQuadro || *gerador.begin() == 0 || *gerador.end() == 0)
-    return GERADOR_ERRO;
-
-  for (int i = 0; i < tamanhoGerador - 1; i++)
-    atual.push_back(quadro[i]);
-
-  for (int i = tamanhoGerador; i < tamanhoQuadro; i++) {
-    atual.push_back(quadro[i]);
-
-    if (atual[0] == 0) {
-      for (int j = 0; j < tamanhoGerador; j++)
-        resto[j] = 0;
-
-    } else
-      resto = gerador;
-
-    for (int j = 0; j < tamanhoGerador; j++)
-      atual[j] ^= resto[j];
-
-    atual.erase(atual.begin());
-  }
-
-  for (auto bit : resto) {
-    if (bit) return MSG_ERRO;
+  if (result != 0) {
+    return MSG_ERRO;
   }
 
   return SEM_ERRO;
@@ -292,4 +262,26 @@ void somaBits(std::vector<int> &quadro, std::vector<int> resto) {
         break;
     }
   }
+}
+
+uint64_t calcCRC(std::vector<int> &quadroPadded, std::vector<int> &generator) {
+  uint64_t dividend = 0, divisor = 0;
+  int i = 0;
+
+  for (; i < generator.size(); i++) {
+    divisor = divisor << 1 | (generator[i] == 1);
+    dividend = dividend << 1 | (quadroPadded[i] == 1);
+  }
+
+  while (i < quadroPadded.size()) {
+    while (i < quadroPadded.size() && dividend < divisor) {
+      dividend = dividend << 1 | (quadroPadded[i] == 1);
+      i++;
+    }
+
+    if (dividend >= divisor) {
+      dividend = dividend ^ divisor;
+    }
+  }
+  return dividend;
 }
