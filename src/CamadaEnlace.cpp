@@ -9,9 +9,12 @@
 
 #define BIT_PARITY 0
 #define CRC 1
+#define HAMMING 2
 
 #define SEM_ERRO "SEM ERROS DETECTÁVEIS"
 #define MSG_ERRO "ERRO DETECTADO NA MENSAGEM"
+#define MSG_ERRO_MULT "MAIS DE UM ERRO DETECTADO NA MENSAGEM"
+#define MSG_ERRO_CORR "FOI CORRIGIDO UM ERRO ENCONTRADO NA MENSAGEM"
 #define GERADOR_ERRO "ERRO DETECTADO NO POLINÔMIO GERADOR"
 
 #define FLAG_BYTE 0xFF
@@ -23,7 +26,7 @@ std::vector<int> gerador = {1, 0, 0, 0, 0, 0, 1, 0,
                             1, 1, 0, 1, 1, 0, 1, 0, 1};
 
 int tipoDeEnquadramento = CHAR_COUNTING;  // alterar de acordo com o teste
-int tipoDeControleErro = CRC;
+int tipoDeControleErro = HAMMING;
 
 void CamadaEnlaceTransmissora(std::vector<int> &quadro) {
   CamadaEnlaceTransmissoraEnquadramento(quadro);
@@ -97,6 +100,10 @@ void CamadaEnlaceTransmissoraControleDeErro(std::vector<int> &quadro) {
     case CRC:
       CamadaEnlaceTransmissoraControleDeErroCRC(quadro);
       break;
+
+    case HAMMING:
+      CamadaEnlaceTransmissoraControleDeErroHamming(quadro);
+      break;
   }
 }
 
@@ -117,17 +124,52 @@ void CamadaEnlaceTransmissoraControleDeErroCRC(std::vector<int> &quadro) {
 
   uint64_t result = calcCRC(quadroPadded, gerador);
 
-  fprintf(logFile, "Transmissora CRC\n");
-
-  fprintf(logFile, "tamanho antes: %d\n", quadro.size());
-  fprintf(logFile, "gerador size: %d\n", gerador.size());
-  fprintf(logFile, "mask inicial: %llx\n", ((uint64_t)1) << (gerador.size() - 2));
-
   for (uint64_t mask = ((uint64_t)1) << (gerador.size() - 2); mask != 0; mask >>= 1) {
     quadro.push_back((result & mask) != 0);
   }
+}
 
-  fprintf(logFile, "tamanho depois: %d\n", quadro.size());
+void CamadaEnlaceTransmissoraControleDeErroHamming(std::vector<int> &quadro) {
+  std::vector<int> quadroHamming;
+
+  if (quadro.size() == 0) {
+    return;
+  }
+
+  // Adiciona 0 na posição 0 pra alinhar os índices
+  // e servir de paridade do bloco inteiro
+  quadroHamming.push_back(0);
+
+  uint32_t delta = 1, hammingBits = 0, parityAll = 0, numHammingAdded = 1;
+
+  for (int i = 0; i < quadro.size(); i++) {
+    while (quadroHamming.size() == delta) {
+      delta = delta << 1;
+      numHammingAdded++;
+
+      // Para cada posição igual à um expoente de 2, insere um hamming bit
+      quadroHamming.push_back(0);
+    }
+
+    quadroHamming.push_back(quadro[i]);
+
+    parityAll ^= quadro[i];
+
+    if (quadro[i] == 1) {
+      // Calcula os bits de paridade de hamming
+      hammingBits ^= i + numHammingAdded;
+    }
+  }
+
+  for (int i = 1; i < delta; i <<= 1) {
+    quadroHamming[i] = (hammingBits & i) != 0;
+    parityAll ^= quadroHamming[i];
+  }
+
+  // Guarda a paridade do bloco
+  quadroHamming[0] = parityAll;
+
+  quadro = quadroHamming;
 }
 
 void CamadaEnlaceReceptora(std::vector<int> &quadro) {
@@ -150,19 +192,23 @@ void CamadaEnlaceReceptoraEnquadramento(std::vector<int> &quadro) {
 }
 
 std::string CamadaEnlaceReceptoraControleDeErro(std::vector<int> &quadro) {
-  std::string msg;
+  std::string errorMsg;
 
   switch (tipoDeControleErro) {
     case BIT_PARITY:
-      msg = CamadaEnlaceReceptoraControleDeErroBitParidade(quadro);
+      errorMsg = CamadaEnlaceReceptoraControleDeErroBitParidade(quadro);
       break;
 
     case CRC:
-      msg = CamadaEnlaceReceptoraControleDeErroCRC(quadro);
+      errorMsg = CamadaEnlaceReceptoraControleDeErroCRC(quadro);
+      break;
+
+    case HAMMING:
+      errorMsg = CamadaEnlaceReceptoraControleDeErroHamming(quadro);
       break;
   }
 
-  return msg;
+  return errorMsg;
 }
 
 std::string CamadaEnlaceReceptoraControleDeErroBitParidade(std::vector<int> &quadro) {
@@ -183,13 +229,45 @@ std::string CamadaEnlaceReceptoraControleDeErroBitParidade(std::vector<int> &qua
 std::string CamadaEnlaceReceptoraControleDeErroCRC(std::vector<int> &quadro) {
   uint64_t result = calcCRC(quadro, gerador);
 
-  fprintf(logFile, "Receptora CRC\n%llx", result);
-
   if (result != 0) {
     return MSG_ERRO;
   }
 
   return SEM_ERRO;
+}
+
+std::string CamadaEnlaceReceptoraControleDeErroHamming(std::vector<int> &quadro) {
+  uint32_t delta = 1, hammingBits = 0, parityAll = quadro[0];
+
+  std::string errorMsg = SEM_ERRO;
+
+  for (int i = 1; i < quadro.size(); i++) {
+    parityAll ^= quadro[i];
+    if (quadro[i] == 1) {
+      hammingBits ^= i;
+    }
+  }
+
+  if (hammingBits != 0 && parityAll == 0) {
+    errorMsg = MSG_ERRO_MULT;
+  } else if (hammingBits != 0) {
+    quadro[hammingBits] = !quadro[hammingBits];
+    errorMsg = MSG_ERRO_CORR;
+  }
+
+  std::vector<int> quadroOriginal;
+
+  for (int i = 1; i < quadro.size(); i++) {
+    if (i == delta) {
+      delta <<= 1;
+    } else {
+      quadroOriginal.push_back(quadro[i]);
+    }
+  }
+
+  quadro = quadroOriginal;
+
+  return errorMsg;
 }
 
 std::vector<int> CamadaEnlaceReceptoraEnquadramentoContagem(std::vector<int> &quadroEnquadrado) {

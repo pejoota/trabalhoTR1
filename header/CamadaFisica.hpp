@@ -12,8 +12,11 @@
 #define MANCHESTER 1
 #define BIPOLAR 2
 
-extern int tipoDeCodificacao;
 extern FILE *logFile;
+
+extern int tipoDeCodificacao;
+
+extern int maxErrors;
 
 void AplicacaoTransmissora();
 void CamadaDeAplicacaoTransmissora(std::string);

@@ -9,6 +9,7 @@ void CamadaEnlaceTransmissoraEnquadramento(std::vector<int> &);
 void CamadaEnlaceTransmissoraControleDeErro(std::vector<int> &);
 void CamadaEnlaceTransmissoraControleDeErroBitParidade(std::vector<int> &);
 void CamadaEnlaceTransmissoraControleDeErroCRC(std::vector<int> &);
+void CamadaEnlaceTransmissoraControleDeErroHamming(std::vector<int> &);
 std::vector<int> CamadaEnlaceTransmissoraEnquadramentoContagem(std::vector<int> &);
 std::vector<int> CamadaEnlaceTransmissoraEnquadramentoInsercao(std::vector<int> &);
 
@@ -17,6 +18,7 @@ void CamadaEnlaceReceptoraEnquadramento(std::vector<int> &);
 std::string CamadaEnlaceReceptoraControleDeErro(std::vector<int> &);
 std::string CamadaEnlaceReceptoraControleDeErroBitParidade(std::vector<int> &);
 std::string CamadaEnlaceReceptoraControleDeErroCRC(std::vector<int> &);
+std::string CamadaEnlaceReceptoraControleDeErroHamming(std::vector<int> &);
 std::vector<int> CamadaEnlaceReceptoraEnquadramentoContagem(std::vector<int> &);
 std::vector<int> CamadaEnlaceReceptoraEnquadramentoInsercao(std::vector<int> &);
 

@@ -26,6 +26,7 @@
 int tipoDeCodificacao = BINARIA;  //alterar de acordo com o teste
 
 int errorCount = 0;
+int maxErrors = INT32_MAX;
 
 int width, height;
 
@@ -75,12 +76,13 @@ void CamadaFisicaTransmissora(std::vector<int> quadro) {
   std::mt19937 rng(dev());
   std::uniform_real_distribution<double> dist100(0.0, 100.0);
 
-  double porcentagemDeErro = 2;
+  double porcentagemDeErro = 5;
 
   for (int i = 0; i < quadro.size(); i++) {
-    if (dist100(rng) < porcentagemDeErro) {
+    if (dist100(rng) < porcentagemDeErro && errorCount < maxErrors) {
       quadro[i] = !quadro[i];
       errorCount++;
+      fprintf(logFile, "Erro %d adicionado [%d] de %d para %d\n", errorCount, i, !quadro[i], quadro[i]);
     } else {
       quadro[i] = quadro[i];
     }
