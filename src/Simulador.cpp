@@ -28,14 +28,15 @@ int main(int argc, char **argv) {
       } catch (...) {
         printf(
             "Usar\n"
-            "./a.out [code] [maxErros]\n\n"
+            "%s [code] [maxErros]\n\n"
             "maxErros pode ser\n"
             "\t>= 0      \tDefine a quantidade maxima de erros\n"
             "\t < 0      \tNão limita a quantidade de erros\n\n"
             "code pode ser\n"
             "\tb binaria \tSeleciona codificação binária\n"
             "\tm manches \tSeleciona codificação manchester\n"
-            "\tp bipolar \tSeleciona codificação bipolar\n");
+            "\tp bipolar \tSeleciona codificação bipolar\n",
+            argv[0]);
 
         return 0;
       }
